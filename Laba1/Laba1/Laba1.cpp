@@ -1,67 +1,13 @@
 ﻿// Laba1.cpp : Определяет точку входа для приложения.
 //
 
-#include "stdafx.h"
 #include "Laba1.h"
-#include <map>
 
 #define MAX_LOADSTRING 100
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
-HWND hWnd_1, hWnd_2;
-
-
-class WindowDescription
-{
-	int w_len = 19;
-	wchar_t* w_str = new wchar_t[w_len];
-	int c_len = 19;
-	char* c_str = new char[c_len];
-	int x = 0;
-	int y = 0;
-
-public:
-	bool isChecked = false;
-	RECT winRect;
-	HWND hwnd;
-
-	WindowDescription() {
-
-	}
-
-	WindowDescription(HWND _hwnd) {
-		hwnd = _hwnd;
-	}
-
-	void set_coords(int _x, int _y) {
-		x = _x; y = _y;
-	}
-
-	void paint(HDC hdc)
-	{
-		int r = 255, g = 0, b = 0;
-		if (isChecked)
-		{
-			r = 0;
-			b = 255;
-		}
-
-		SelectObject(hdc, CreatePen(PS_SOLID, 2, RGB(r, g, b)));
-		GetClientRect(hwnd, &winRect);
-
-		sprintf_s(c_str, c_len, "Coords X[%d] Y[%d]", x, y);
-		MultiByteToWideChar(CP_ACP, 0, c_str, -1, w_str, w_len);
-		DrawText(hdc, w_str, -1, &winRect, DT_BOTTOM);
-
-		MoveToEx(hdc, 0, 0, NULL);
-		LineTo(hdc, winRect.right, winRect.bottom);
-		MoveToEx(hdc, winRect.right, 0, NULL);
-		LineTo(hdc, 0, winRect.bottom);
-	}
-};
-
 std::map<HWND, WindowDescription> windows;
 
 // Отправить объявления функций, включенных в этот модуль кода:
@@ -77,8 +23,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
-
-	// TODO: Разместите код здесь.
 
 	// Инициализация глобальных строк
 	LoadStringW(hInstance, IDC_LABA1, szWindowClass, MAX_LOADSTRING);
@@ -129,26 +73,51 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassExW(&wcex);
 }
 
-//
-//   ФУНКЦИЯ: InitInstance(HINSTANCE, int)
-//
-//   ЦЕЛЬ: Сохраняет маркер экземпляра и создает главное окно
-//
-//   КОММЕНТАРИИ:
-//
-//        В этой функции маркер экземпляра сохраняется в глобальной переменной, а также
-//        создается и выводится главное окно программы.
-//
+HMENU CreateMyMenu(HWND hwnd)
+{
+	int offset = windows[hwnd].get_id() * 2;
+	windows[hwnd].one_event = 1001 + offset;
+	windows[hwnd].both_event = 1002 + offset;
+
+	HMENU hMainMenu = CreateMenu();
+	HMENU hPopMenuFile = CreatePopupMenu();
+
+	AppendMenu(hMainMenu, MF_STRING | MF_POPUP, (UINT)hPopMenuFile, L"Настройки");
+	{
+		AppendMenu(hPopMenuFile, MF_STRING | MF_UNCHECKED, windows[hwnd].one_event, L"Включить только в этом окне");
+		AppendMenu(hPopMenuFile, MF_STRING | MF_CHECKED, windows[hwnd].both_event, L"Включить в обоих окнах");
+		AppendMenu(hPopMenuFile, MF_SEPARATOR, 1000, L"");
+		AppendMenu(hPopMenuFile, MF_STRING, IDM_EXIT, L"Выход");
+	}
+	AppendMenu(hMainMenu, MF_STRING, IDM_ABOUT, L"Справка");
+
+	windows[hwnd].one_id = GetMenuItemID(hPopMenuFile, 0);
+	windows[hwnd].both_id = GetMenuItemID(hPopMenuFile, 1);
+
+	MENUINFO mi;
+	mi.cbSize = sizeof(mi);
+	mi.hbrBack = CreateSolidBrush(RGB(200, 50, 50));
+	mi.fMask = MIIM_STATE | MIIM_TYPE | MIIM_SUBMENU | MIIM_ID;
+	mi.dwStyle = 0;
+
+	SetMenuInfo(hMainMenu, &mi);
+	SetMenuInfo(hPopMenuFile, &mi);
+
+	return hMainMenu;
+}
+
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Сохранить маркер экземпляра в глобальной переменной
-	hWnd_1 = CreateWindowW(szWindowClass, L"Title 1", WS_OVERLAPPEDWINDOW,
+	HWND hWnd_1 = CreateWindowW(szWindowClass, L"Title 1", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-	hWnd_2 = CreateWindowW(szWindowClass, L"Title 2", WS_OVERLAPPEDWINDOW,
+	HWND hWnd_2 = CreateWindowW(szWindowClass, L"Title 2", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd_1, nullptr, hInstance, nullptr);
 
 	windows[hWnd_1] = WindowDescription(hWnd_1);
 	windows[hWnd_2] = WindowDescription(hWnd_2);
+	SetMenu(hWnd_1, CreateMyMenu(hWnd_1));
+	SetMenu(hWnd_2, CreateMyMenu(hWnd_2));
 
 	if (!hWnd_1 || !hWnd_2)
 	{
@@ -163,24 +132,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	return TRUE;
 }
 
-//
-//  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  ЦЕЛЬ: Обрабатывает сообщения в главном окне.
-//
-//  WM_COMMAND  - обработать меню приложения
-//  WM_PAINT    - Отрисовка главного окна
-//  WM_DESTROY  - отправить сообщение о выходе и вернуться
-//
-//
-
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
 	case WM_MOUSEMOVE:
-		GET
-		windows[hWnd].set_coords(0, 0);
+		windows[hWnd].set_coords(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
 		break;
 	case WM_LBUTTONDOWN:
 		windows[hWnd].isChecked = !windows[hWnd].isChecked;
@@ -189,6 +147,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam);
+
+		if (wmId > 1000)
+		{
+			if (windows[hWnd].one_event == wmId)
+			{
+				for (auto iter = windows.begin(), end = windows.end(); iter != end; iter++)
+					if (iter->first != hWnd)
+					{
+						HMENU menu = GetMenu(iter->first);
+						MENUINFO easd;
+						GetMenuInfo(menu, &easd);
+						MENUITEMINFO info;
+						GetMenuItemInfo(menu, iter->second.one_id, false, &info);
+						auto v = info.hbmpChecked;
+						auto c = info.hbmpUnchecked;
+						int a = 4;
+					}
+			}
+			else if (windows[hWnd].both_event == wmId);
+		}
+		else
 		// Разобрать выбор в меню:
 		switch (wmId)
 		{
@@ -210,7 +189,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		windows[hWnd].paint(hdc);
 
-		// TODO: Добавьте сюда любой код прорисовки, использующий HDC...
 		EndPaint(hWnd, &ps);
 	}
 	break;
@@ -223,7 +201,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-// Обработчик сообщений для окна "О программе".
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER(lParam);
