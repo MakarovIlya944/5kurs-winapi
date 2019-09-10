@@ -3,3 +3,5 @@ Laba1/.vs/**
 Laba1/Laba1/Debug/**
 Laba1/Laba1/x64/**
 Laba1/Laba1/*.vcxproj
+Laba1/Debug/**
+*.aps

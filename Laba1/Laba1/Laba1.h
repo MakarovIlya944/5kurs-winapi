@@ -32,6 +32,18 @@ public:
 		id = count++;
 	}
 
+	/*WindowDescription& operator= (const WindowDescription& a)
+	{
+		WindowDescription ret;
+		ret.id = a.id;
+		ret.hwnd = a.hwnd;
+		return ret;
+	}*/
+
+	void init(HWND _hwnd) {
+		hwnd = _hwnd;
+		id = count++;
+	}
 	void set_time(SYSTEMTIME t) { time = t.wSecond + (t.wMinute + (t.wHour % 12) * 60) * 60; }
 	void set_show(int ind) { who_show = ind; }
 	void set_show() { who_show = id; }
@@ -52,7 +64,10 @@ public:
 		}
 
 		SelectObject(hdc, CreatePen(PS_SOLID, 2, RGB(r, g, b)));
+		SelectObject(hdc, CreateSolidBrush(RGB(255, 255, 255)));
 		GetClientRect(hwnd, &winRect);
+		//SetBkColor(hdc, RGB(255, 255, 255));
+		Rectangle(hdc, -1, -1, winRect.right + 1, winRect.bottom + 1);
 
 		if(who_show < 0 || who_show == id)
 			s_len = sprintf_s(c_str, -1, "Coords X[%0.4d] Y[%0.4d]", x, y) + 1;
@@ -62,21 +77,27 @@ public:
 		MultiByteToWideChar(CP_ACP, 0, c_str, -1, w_str, s_len);
 		DrawText(hdc, w_str, -1, &winRect, DT_BOTTOM);
 
-		MoveToEx(hdc, 0, 0, NULL);
+		/*MoveToEx(hdc, 0, 0, NULL);
 		LineTo(hdc, winRect.right, winRect.bottom);
 		MoveToEx(hdc, winRect.right, 0, NULL);
-		LineTo(hdc, 0, winRect.bottom);
+		LineTo(hdc, 0, winRect.bottom);*/
 
 		int R = min(winRect.bottom, winRect.right) / 2;
-		int c_x, c_y;
+		int c_x = winRect.right/2, c_y = winRect.bottom/2;
+		MoveToEx(hdc, c_x + R, c_y, NULL);
 		AngleArc(hdc, c_x, c_y, R, 0, 360);
 
-		float ang = 0;
-		ang = h_max % time;
+		float ang = 0, k = R / 3.0, pi = 3.1419 * 2;
+		ang = (float)time / h_max * pi;
 		MoveToEx(hdc, c_x, c_y, NULL);
-		LineTo(hdc, c_x + (R / 3) * cos(ang), c_y + (R / 3) * sin(ang));
-		ang = m_max % time;
+		LineTo(hdc, c_x + k * cos(ang), c_y + k * sin(ang));
+		ang = (float)(time % m_max) / m_max * pi;
+		k = R * 2.0 / 3.0;
 		MoveToEx(hdc, c_x, c_y, NULL);
-		ang = s_max % time;
+		LineTo(hdc, c_x + k * cos(ang), c_y + k * sin(ang));
+		ang = (float)(time % s_max) / s_max * pi;
+		k = R;
+		MoveToEx(hdc, c_x, c_y, NULL);
+		LineTo(hdc, c_x + k * cos(ang), c_y + k * sin(ang));
 	}
 };

@@ -1,6 +1,7 @@
 ﻿// Laba1.cpp : Определяет точку входа для приложения.
 //
 
+#include "framework.h"
 #include "Laba1.h"
 
 #define MAX_LOADSTRING 100
@@ -9,6 +10,7 @@
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
 std::map<HWND, WindowDescription> windows;
+SYSTEMTIME time;
 
 // Отправить объявления функций, включенных в этот модуль кода:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -111,16 +113,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hWnd_2 = CreateWindowW(szWindowClass, L"Title 2", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd_1, nullptr, hInstance, nullptr);
 
-	WindowDescription().set_show(-1); WindowDescription(hWnd_1);
-	windows[hWnd_1] = WindowDescription(hWnd_1);
-	windows[hWnd_2] = WindowDescription(hWnd_2);
+	WindowDescription().set_show(-1);
+	windows.emplace(hWnd_1, WindowDescription(hWnd_1));
+	windows.emplace(hWnd_2, WindowDescription(hWnd_2));
 	SetMenu(hWnd_1, CreateMyMenu(hWnd_1));
 	SetMenu(hWnd_2, CreateMyMenu(hWnd_2));
 
-	SYSTEMTIME time;
 	GetSystemTime(&time);
 	windows[hWnd_1].set_time(time);
 	windows[hWnd_2].set_time(time);
+
+	SetTimer(hWnd_1, windows[hWnd_1].get_id() + 1, 100, NULL);
+	SetTimer(hWnd_2, windows[hWnd_2].get_id() + 1, 100, NULL);
 
 	RegisterHotKey(hWnd_1, windows[hWnd_1].one_event, MOD_NOREPEAT, 0x31);
 	RegisterHotKey(hWnd_2, windows[hWnd_2].one_event, MOD_NOREPEAT, 0x31);
@@ -145,6 +149,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_TIMER:
+		GetSystemTime(&time);
+		windows[hWnd].set_time(time);
 		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
 		break;
 	case WM_HOTKEY:
