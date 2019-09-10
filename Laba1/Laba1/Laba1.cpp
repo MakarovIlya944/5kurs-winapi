@@ -33,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	{
 		return FALSE;
 	}
-
+	
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LABA1));
 
 	MSG msg;
@@ -84,15 +84,12 @@ HMENU CreateMyMenu(HWND hwnd)
 
 	AppendMenu(hMainMenu, MF_STRING | MF_POPUP, (UINT)hPopMenuFile, L"Настройки");
 	{
-		AppendMenu(hPopMenuFile, MF_STRING | MF_UNCHECKED, windows[hwnd].one_event, L"Включить только в этом окне");
-		AppendMenu(hPopMenuFile, MF_STRING | MF_CHECKED, windows[hwnd].both_event, L"Включить в обоих окнах");
+		AppendMenu(hPopMenuFile, MF_STRING, windows[hwnd].one_event, L"Включить только в этом окне");
+		AppendMenu(hPopMenuFile, MF_STRING, windows[hwnd].both_event, L"Включить в обоих окнах");
 		AppendMenu(hPopMenuFile, MF_SEPARATOR, 1000, L"");
 		AppendMenu(hPopMenuFile, MF_STRING, IDM_EXIT, L"Выход");
 	}
 	AppendMenu(hMainMenu, MF_STRING, IDM_ABOUT, L"Справка");
-
-	windows[hwnd].one_id = GetMenuItemID(hPopMenuFile, 0);
-	windows[hwnd].both_id = GetMenuItemID(hPopMenuFile, 1);
 
 	MENUINFO mi;
 	mi.cbSize = sizeof(mi);
@@ -114,10 +111,21 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hWnd_2 = CreateWindowW(szWindowClass, L"Title 2", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd_1, nullptr, hInstance, nullptr);
 
+	WindowDescription().set_show(-1); WindowDescription(hWnd_1);
 	windows[hWnd_1] = WindowDescription(hWnd_1);
 	windows[hWnd_2] = WindowDescription(hWnd_2);
 	SetMenu(hWnd_1, CreateMyMenu(hWnd_1));
 	SetMenu(hWnd_2, CreateMyMenu(hWnd_2));
+
+	SYSTEMTIME time;
+	GetSystemTime(&time);
+	windows[hWnd_1].set_time(time);
+	windows[hWnd_2].set_time(time);
+
+	RegisterHotKey(hWnd_1, windows[hWnd_1].one_event, MOD_NOREPEAT, 0x31);
+	RegisterHotKey(hWnd_2, windows[hWnd_2].one_event, MOD_NOREPEAT, 0x31);
+	RegisterHotKey(hWnd_1, windows[hWnd_1].both_event, MOD_NOREPEAT, 0x32);
+	RegisterHotKey(hWnd_2, windows[hWnd_2].both_event, MOD_NOREPEAT, 0x32);
 
 	if (!hWnd_1 || !hWnd_2)
 	{
@@ -136,6 +144,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
+	case WM_TIMER:
+		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
+		break;
+	case WM_HOTKEY:
+	{
+		WINDOWINFO* a = new WINDOWINFO[2];
+		int i = 0;
+		for(auto var : windows)
+		{
+			a[i++].cbSize = sizeof(WINDOWINFO);
+			GetWindowInfo(var.first, &(a[i]));
+		}
+
+		int wmId = LOWORD(wParam);
+
+		if (windows[hWnd].one_event == wmId)		windows[hWnd].set_show();
+		else if (windows[hWnd].both_event == wmId)	windows[hWnd].set_show(-1);
+	}
+		break;
 	case WM_MOUSEMOVE:
 		windows[hWnd].set_coords(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
@@ -150,22 +177,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		if (wmId > 1000)
 		{
-			if (windows[hWnd].one_event == wmId)
-			{
-				for (auto iter = windows.begin(), end = windows.end(); iter != end; iter++)
-					if (iter->first != hWnd)
-					{
-						HMENU menu = GetMenu(iter->first);
-						MENUINFO easd;
-						GetMenuInfo(menu, &easd);
-						MENUITEMINFO info;
-						GetMenuItemInfo(menu, iter->second.one_id, false, &info);
-						auto v = info.hbmpChecked;
-						auto c = info.hbmpUnchecked;
-						int a = 4;
-					}
-			}
-			else if (windows[hWnd].both_event == wmId);
+			if (windows[hWnd].one_event == wmId)		windows[hWnd].set_show();
+			else if (windows[hWnd].both_event == wmId)	windows[hWnd].set_show(-1);
 		}
 		else
 		// Разобрать выбор в меню:
@@ -193,6 +206,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	break;
 	case WM_DESTROY:
+		UnregisterHotKey(hWnd, windows[hWnd].one_event);
+		UnregisterHotKey(hWnd, windows[hWnd].both_event);
 		PostQuitMessage(0);
 		break;
 	default:
