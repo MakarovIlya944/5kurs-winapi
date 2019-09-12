@@ -111,7 +111,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hWnd_1 = CreateWindowW(szWindowClass, L"Title 1", WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 	HWND hWnd_2 = CreateWindowW(szWindowClass, L"Title 2", WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd_1, nullptr, hInstance, nullptr);
+		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
 	WindowDescription().set_show(-1);
 	windows.emplace(hWnd_1, WindowDescription(hWnd_1));
@@ -127,9 +127,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	SetTimer(hWnd_2, windows[hWnd_2].get_id() + 1, 100, NULL);
 
 	RegisterHotKey(hWnd_1, windows[hWnd_1].one_event, MOD_NOREPEAT, 0x31);
-	RegisterHotKey(hWnd_2, windows[hWnd_2].one_event, MOD_NOREPEAT, 0x31);
-	RegisterHotKey(hWnd_1, windows[hWnd_1].both_event, MOD_NOREPEAT, 0x32);
-	RegisterHotKey(hWnd_2, windows[hWnd_2].both_event, MOD_NOREPEAT, 0x32);
+	RegisterHotKey(hWnd_2, windows[hWnd_2].one_event, MOD_NOREPEAT, 0x32);
+	RegisterHotKey(hWnd_1, windows[hWnd_1].both_event, MOD_NOREPEAT, VK_SPACE);
+	RegisterHotKey(hWnd_2, windows[hWnd_2].both_event, MOD_NOREPEAT, VK_SPACE);
 
 	if (!hWnd_1 || !hWnd_2)
 	{
@@ -152,30 +152,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		GetSystemTime(&time);
 		windows[hWnd].set_time(time);
 		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
+		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 	case WM_HOTKEY:
 	{
-		WINDOWINFO* a = new WINDOWINFO[2];
-		int i = 0;
-		for(auto var : windows)
-		{
-			a[i++].cbSize = sizeof(WINDOWINFO);
-			GetWindowInfo(var.first, &(a[i]));
-		}
-
 		int wmId = LOWORD(wParam);
 
 		if (windows[hWnd].one_event == wmId)		windows[hWnd].set_show();
 		else if (windows[hWnd].both_event == wmId)	windows[hWnd].set_show(-1);
+		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 		break;
 	case WM_MOUSEMOVE:
 		windows[hWnd].set_coords(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
+		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 	case WM_LBUTTONDOWN:
 		windows[hWnd].isChecked = !windows[hWnd].isChecked;
 		InvalidateRect(hWnd, &(windows[hWnd].winRect), false);
+		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 	case WM_COMMAND:
 	{
@@ -185,6 +181,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (windows[hWnd].one_event == wmId)		windows[hWnd].set_show();
 			else if (windows[hWnd].both_event == wmId)	windows[hWnd].set_show(-1);
+			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 		else
 		// Разобрать выбор в меню:
